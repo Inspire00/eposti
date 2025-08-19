@@ -24,7 +24,7 @@ export default function HowItWorksPage() {
         <h2 className="text-2xl font-semibold text-gray-900 mb-4">For Room Seekers 👀</h2>
         <ol className="list-decimal list-inside space-y-3">
           <li>
-            **Browse Listings:** Visit our homepage, the <Link href="/" className="text-indigo-600 underline hover:text-indigo-800">Listed Rooms</Link> page. Here, you'll find all available rooms listed with their key details and a primary picture.
+            **Browse Listings:** Visit our homepage, the <Link href="/" className="text-indigo-600 underline hover:text-indigo-800">Listed Rooms</Link> page. Here, you will find all available rooms listed with their key details and a primary picture.
           </li>
           <li>
             **Search & Filter:** Use the search bar and filters (coming soon!) to narrow down rooms by city, suburb, province, or rent price.
