@@ -17,7 +17,7 @@ export default function AboutPage() {
           We believe in creating a transparent and efficient marketplace where community members can find shared living spaces that suit their needs, budgets, and preferences. From bustling city centers to quiet suburban retreats, Roomify SA is committed to helping you find your next home.
         </p>
         <p>
-          Thank you for choosing Roomify SA. We're here to make your room hunting or listing journey as smooth as possible.
+          Thank you for choosing Roomify SA. We are here to make your room hunting or listing journey as smooth as possible.
         </p>
 
         <p>
