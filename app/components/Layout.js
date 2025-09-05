@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Layout({ children }) {
   return (
@@ -8,7 +9,16 @@ export default function Layout({ children }) {
       <header className="bg-white shadow-sm p-4 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center">
           <Link href="/" className="text-3xl font-bold text-gray-800 mb-4 sm:mb-0 hover:text-indigo-600 transition-colors duration-200">
-            Roomify SA 🏠
+              <div className="flex items-center">
+                <Image 
+                  src="/eposti2.png" // Replace with the actual path to your icon
+                  alt="Roomify SA Home Icon"
+                  width={32} // Adjust size as needed
+                  height={32} // Adjust size as needed
+                  className="mr-2" // Add some spacing to the right of the icon
+                />
+                Eposti
+              </div>
           </Link>
           <nav className="flex space-x-6">
             <Link href="/" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors duration-200">
@@ -22,6 +32,14 @@ export default function Layout({ children }) {
             </Link>
             <Link href="/about" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors duration-200">
               About Us
+            </Link>
+
+            <Link href="/privacy-policy" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors duration-200">
+              Privacy Policy
+            </Link>
+
+            <Link href="/terms" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors duration-200">
+              Terms of Service
             </Link>
           </nav>
         </div>

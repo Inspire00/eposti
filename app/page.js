@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Client, Databases, Query, Storage } from 'appwrite';
-// REMOVED: import Layout from '../components/Layout'; // Layout is now ONLY handled by app/layout.js
 
 // Configuration for your Appwrite instance.
-// Ensure these environment variables are correctly set in your .env.local file
 const appwriteConfig = {
   endpoint: process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT,
   projectId: process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID,
@@ -29,56 +27,83 @@ export default function Home() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [zoomImage, setZoomImage] = useState(null); // State to control image zoom modal
+  const [zoomImage, setZoomImage] = useState(null);
+
+  // Function to check if a string is a valid URL
+  const isValidUrl = (string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   // Function to fetch all room listings from Appwrite
   const fetchListings = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await databases.listDocuments(
         appwriteConfig.databaseId,
         appwriteConfig.collectionId,
-        [Query.orderDesc('$createdAt')] // Order by creation date descending
+        [Query.orderDesc('$createdAt')]
       );
 
       const listingsWithImages = response.documents.map(listing => {
-        // Ensure listing.images is an array and contains valid file IDs
-        const imageFileIds = Array.isArray(listing.images) ? listing.images : [];
+        let imageUrls = [];
 
-        const imageUrls = imageFileIds.map(fileId => {
-          let generatedUrl = placeholderImageUrl; // Default to placeholder
-          try {
-            // Appwrite getFileView generates a public URL for the file
-            // This should ideally return the full-size image.
-            const fileView = storage.getFileView(appwriteConfig.storageId, fileId);
-            
-            if (fileView && fileView.href) {
-              generatedUrl = fileView.href;
-            } else {
-              // Fallback to manual URL construction if SDK's href is missing
-              generatedUrl = `${appwriteConfig.endpoint}/storage/buckets/${appwriteConfig.storageId}/files/${fileId}/view?project=${appwriteConfig.projectId}`;
+        console.log(`Raw images for ${listing.$id}:`, listing.images); // Debug raw input
+
+        // Case 1: Images are stored as an array (from website or parsed WhatsApp bot string)
+        if (Array.isArray(listing.images)) {
+          imageUrls = listing.images.map(item => {
+            // If the item is a URL (WhatsApp bot), use it directly
+            if (isValidUrl(item) && item.includes('cloud.appwrite.io') && item.includes('/storage/buckets/') && item.includes('/files/') && item.includes('/view?project=')) {
+              return item;
             }
-          } catch (e) {
-            console.error(`Error during Appwrite SDK's getFileView for fileId: ${fileId}:`, e);
-            // Fallback to manual construction on error too
-            generatedUrl = `${appwriteConfig.endpoint}/storage/buckets/${appwriteConfig.storageId}/files/${fileId}/view?project=${appwriteConfig.projectId}`;
-          }
-          return generatedUrl;
-        });
-        
-        // Ensure at least one placeholder if no actual images are available
-        if (imageUrls.length === 0 || imageUrls.every(url => url === placeholderImageUrl)) {
+            // Otherwise, treat as a file ID (website)
+            try {
+              const fileView = storage.getFileView(appwriteConfig.storageId, item);
+              const url = fileView?.href || `${appwriteConfig.endpoint}/storage/buckets/${appwriteConfig.storageId}/files/${item}/view?project=${appwriteConfig.projectId}`;
+              return url;
+            } catch (e) {
+              console.error(`Error with getFileView for fileId: ${item}:`, e);
+              return placeholderImageUrl;
+            }
+          });
+        }
+        // Case 2: Images are a comma-separated string (fallback for any unparsed WhatsApp bot data)
+        else if (typeof listing.images === 'string' && listing.images.trim() !== '') {
+          imageUrls = listing.images
+            .split(/,\s*|\s*,\s*/)
+            .map(url => url.trim())
+            .filter(url => {
+              try {
+                new URL(url);
+                return url.includes('cloud.appwrite.io') && url.includes('/storage/buckets/') && url.includes('/files/') && url.includes('/view?project=');
+              } catch {
+                console.warn(`Invalid URL in listing ${listing.$id}: ${url}`);
+                return false;
+              }
+            });
+        }
+
+        // Fallback to placeholder if no valid images
+        if (imageUrls.length === 0) {
+          console.warn(`No valid images for listing ${listing.$id}, using placeholder`);
           imageUrls.push(placeholderImageUrl);
         }
+
+        console.log(`Processed imageUrls for ${listing.$id}:`, imageUrls); // Debug processed URLs
 
         return { ...listing, imageUrls };
       });
 
       setListings(listingsWithImages);
     } catch (e) {
-      console.error('Error fetching listings:', e);
+      console.error('Error fetching listings:', e.message, e.code);
       setError('Failed to load listings. Please check your Appwrite configuration and permissions.');
     } finally {
       setLoading(false);
@@ -90,8 +115,6 @@ export default function Home() {
   }, []);
 
   const handleImageClick = (imageUrl) => {
-    // When an image is clicked, ensure we pass the *same* generated URL for zooming.
-    // The modal's CSS should handle maximizing its size.
     setZoomImage(imageUrl);
   };
 
@@ -100,7 +123,7 @@ export default function Home() {
   };
 
   return (
-    <> {/* IMPORTANT: Use a React Fragment here, NOT <Layout> */}
+    <>
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800 mb-4 sm:mb-0">Available Room Listings</h1>
         <button
@@ -138,17 +161,18 @@ export default function Home() {
             key={listing.$id}
             className="bg-white rounded-xl shadow-lg overflow-hidden transition-transform transform hover:scale-105"
           >
-            {/* Main Image - First image */}
             <div className="h-64 overflow-hidden cursor-pointer" onClick={() => handleImageClick(listing.imageUrls[0])}>
               <img
                 src={listing.imageUrls[0]}
                 alt={`Image 1 of room listing in ${listing.location}`}
                 className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
-                onError={(e) => { e.target.src = placeholderImageUrl; }}
+                onError={(e) => {
+                  console.error(`Image failed to load for ${listing.$id}: ${e.target.src}`);
+                  e.target.src = placeholderImageUrl;
+                }}
               />
             </div>
 
-            {/* Additional Images - Next two (if available) */}
             {(listing.imageUrls.length > 1 || (listing.imageUrls[0] === placeholderImageUrl && listing.imageUrls.length > 1)) && (
               <div className="grid grid-cols-2 gap-1 p-1 bg-gray-50">
                 {listing.imageUrls.slice(1, 3).map((imgUrl, index) => (
@@ -157,7 +181,10 @@ export default function Home() {
                       src={imgUrl}
                       alt={`Image ${index + 2} of room listing in ${listing.location}`}
                       className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
-                      onError={(e) => { e.target.src = placeholderImageUrl; }}
+                      onError={(e) => {
+                        console.error(`Image failed to load for ${listing.$id}: ${e.target.src}`);
+                        e.target.src = placeholderImageUrl;
+                      }}
                     />
                   </div>
                 ))}
@@ -201,7 +228,6 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Image Zoom Modal */}
       {zoomImage && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100] p-4"

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Roomify SA", // Your application title
+  title: "Eposti", // Your application title
   description: "Find and list vacant rooms in South Africa easily.",
 };
 
