@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Client, Databases, Storage, ID, Permission, Role } from 'appwrite';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
 
 // Configuration for your Appwrite instance.
 // Ensure these environment variables are correctly set in your .env.local file
@@ -14,16 +14,8 @@ const appwriteConfig = {
   storageId: process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID,
 };
 
-// Initialize Appwrite services
-const client = new Client()
-  .setEndpoint(appwriteConfig.endpoint)
-  .setProject(appwriteConfig.projectId);
-
-const databases = new Databases(client);
-const storage = new Storage(client);
-
 export default function ListRoomPage() {
-  const router = useRouter(); // Initialize the router
+  const router = useRouter();
 
   const [formData, setFormData] = useState({
     location: '',
@@ -39,9 +31,8 @@ export default function ListRoomPage() {
   });
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [loading, setLoading] = useState(false);
-  // Replaced 'error' with more specific error states
-  const [formError, setFormError] = useState(null); // For general form submission errors
-  const [imageSelectError, setImageSelectError] = useState(null); // For image selection specific error
+  const [formError, setFormError] = useState(null);
+  const [imageSelectError, setImageSelectError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
   const handleChange = (e) => {
@@ -54,11 +45,11 @@ export default function ListRoomPage() {
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
-    setImageSelectError(null); // Clear previous image selection error
+    setImageSelectError(null);
     if (files.length > 3) {
       setImageSelectError("You can select a maximum of 3 pictures.");
-      setSelectedFiles([]); // Clear selected files in state
-      e.target.value = null; // Clear the file input visually after warning
+      setSelectedFiles([]);
+      e.target.value = null;
       return;
     }
     setSelectedFiles(files);
@@ -67,8 +58,8 @@ export default function ListRoomPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setFormError(null); // Clear general form error
-    setImageSelectError(null); // Clear image selection error
+    setFormError(null);
+    setImageSelectError(null);
     setSuccessMessage(null);
 
     if (selectedFiles.length === 0) {
@@ -78,6 +69,14 @@ export default function ListRoomPage() {
     }
 
     try {
+      // Initialize Appwrite services inside the function
+      const client = new Client()
+        .setEndpoint(appwriteConfig.endpoint)
+        .setProject(appwriteConfig.projectId);
+
+      const databases = new Databases(client);
+      const storage = new Storage(client);
+
       const imageFileIds = [];
 
       // 1. Upload images to Appwrite Storage with explicit read permissions for 'any' role
@@ -87,7 +86,7 @@ export default function ListRoomPage() {
           appwriteConfig.storageId,
           uniqueFileId,
           file,
-          [Permission.read(Role.any())] // Explicitly set read permissions for anyone
+          [Permission.read(Role.any())]
         );
         imageFileIds.push(uploadedFile.$id);
       }
@@ -104,7 +103,7 @@ export default function ListRoomPage() {
         description: formData.description,
         contact_name: formData.contact_name,
         contact_number: formData.contact_number,
-        images: imageFileIds, // Store array of image file IDs
+        images: imageFileIds,
       };
 
       await databases.createDocument(
@@ -136,7 +135,7 @@ export default function ListRoomPage() {
       // Redirect to the home page after a short delay to show success message
       setTimeout(() => {
         router.push('/');
-      }, 2000); // Redirect after 2 seconds
+      }, 2000);
 
     } catch (e) {
       console.error("Error creating listing:", e);
@@ -147,7 +146,7 @@ export default function ListRoomPage() {
   };
 
   return (
-    <> {/* Replaced Layout with a Fragment */}
+    <>
       <h1 className="text-3xl font-bold text-gray-800 mb-6">List Your Room</h1>
       <p className="mb-8 text-gray-700">
         You can list your room directly here or use our WhatsApp chatbot.
@@ -161,17 +160,16 @@ export default function ListRoomPage() {
         </div>
       )}
 
-      {formError && ( // Display general form errors at the top
+      {formError && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4" role="alert">
           <strong className="font-bold">Error!</strong>
           <span className="block sm:inline ml-2">{formError}</span>
         </div>
       )}
 
-      {/* --- BEGIN Centering Container --- */}
       <div className="max-w-2xl mx-auto p-4 sm:p-6 lg:p-8">
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-lg space-y-6">
-          {/* Poster Contact Information */}
+          {/* ... all your form fields remain the same ... */}
           <div>
             <label htmlFor="contact_name" className="block text-gray-700 text-sm font-bold mb-2">Your Name:</label>
             <input
@@ -198,8 +196,6 @@ export default function ListRoomPage() {
               placeholder="e.g., +27821234567"
             />
           </div>
-
-          {/* Room Details */}
           <div>
             <label htmlFor="location" className="block text-gray-700 text-sm font-bold mb-2">Location (City, Suburb, Province):</label>
             <input
@@ -300,7 +296,6 @@ export default function ListRoomPage() {
             ></textarea>
           </div>
 
-          {/* Image Upload Section */}
           <div className="border-t pt-6 mt-6">
             <label htmlFor="images" className="block text-gray-700 text-sm font-bold mb-2">
               Upload Pictures (1-3 images):
@@ -319,13 +314,12 @@ export default function ListRoomPage() {
                 file:bg-indigo-50 file:text-indigo-700
                 hover:file:bg-indigo-100"
             />
-            {/* Display selected files count or names */}
             {selectedFiles.length > 0 && (
               <p className="mt-2 text-sm text-gray-600">
                 Selected: {selectedFiles.length} file(s) ({selectedFiles.map(file => file.name).join(', ')})
               </p>
             )}
-            {imageSelectError && ( // Display image selection specific error here
+            {imageSelectError && (
               <p className="mt-2 text-sm text-red-600">{imageSelectError}</p>
             )}
           </div>
@@ -341,7 +335,6 @@ export default function ListRoomPage() {
           </div>
         </form>
       </div>
-      {/* --- END Centering Container --- */}
     </>
   );
 }
