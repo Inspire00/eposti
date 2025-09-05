@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Client, Databases, Query, Storage } from 'appwrite';
+import Image from 'next/image';
 
 // Configuration for your Appwrite instance.
 const appwriteConfig = {
@@ -11,14 +12,6 @@ const appwriteConfig = {
   collectionId: process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID,
   storageId: process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID,
 };
-
-// Initialize Appwrite services
-const client = new Client()
-  .setEndpoint(appwriteConfig.endpoint)
-  .setProject(appwriteConfig.projectId);
-
-const databases = new Databases(client);
-const storage = new Storage(client);
 
 // A simple fallback image URL in case an image fails to load.
 const placeholderImageUrl = 'https://placehold.co/400x300/e2e8f0/64748b?text=Image+Not+Found';
@@ -44,6 +37,14 @@ export default function Home() {
     try {
       setLoading(true);
       setError(null);
+      
+      // Initialize Appwrite services inside the function
+      const client = new Client()
+        .setEndpoint(appwriteConfig.endpoint)
+        .setProject(appwriteConfig.projectId);
+
+      const databases = new Databases(client);
+      const storage = new Storage(client);
 
       const response = await databases.listDocuments(
         appwriteConfig.databaseId,
@@ -54,16 +55,14 @@ export default function Home() {
       const listingsWithImages = response.documents.map(listing => {
         let imageUrls = [];
 
-        console.log(`Raw images for ${listing.$id}:`, listing.images); // Debug raw input
-
-        // Case 1: Images are stored as an array (from website or parsed WhatsApp bot string)
+        // Case 1: Images are stored as an array
         if (Array.isArray(listing.images)) {
           imageUrls = listing.images.map(item => {
-            // If the item is a URL (WhatsApp bot), use it directly
-            if (isValidUrl(item) && item.includes('cloud.appwrite.io') && item.includes('/storage/buckets/') && item.includes('/files/') && item.includes('/view?project=')) {
+            // If the item is a URL (from bot), use it directly
+            if (isValidUrl(item)) {
               return item;
             }
-            // Otherwise, treat as a file ID (website)
+            // Otherwise, treat as a file ID (from website)
             try {
               const fileView = storage.getFileView(appwriteConfig.storageId, item);
               const url = fileView?.href || `${appwriteConfig.endpoint}/storage/buckets/${appwriteConfig.storageId}/files/${item}/view?project=${appwriteConfig.projectId}`;
@@ -74,29 +73,18 @@ export default function Home() {
             }
           });
         }
-        // Case 2: Images are a comma-separated string (fallback for any unparsed WhatsApp bot data)
+        // Case 2: Images are a comma-separated string (fallback for bot)
         else if (typeof listing.images === 'string' && listing.images.trim() !== '') {
           imageUrls = listing.images
             .split(/,\s*|\s*,\s*/)
             .map(url => url.trim())
-            .filter(url => {
-              try {
-                new URL(url);
-                return url.includes('cloud.appwrite.io') && url.includes('/storage/buckets/') && url.includes('/files/') && url.includes('/view?project=');
-              } catch {
-                console.warn(`Invalid URL in listing ${listing.$id}: ${url}`);
-                return false;
-              }
-            });
+            .filter(url => isValidUrl(url));
         }
 
         // Fallback to placeholder if no valid images
         if (imageUrls.length === 0) {
-          console.warn(`No valid images for listing ${listing.$id}, using placeholder`);
           imageUrls.push(placeholderImageUrl);
         }
-
-        console.log(`Processed imageUrls for ${listing.$id}:`, imageUrls); // Debug processed URLs
 
         return { ...listing, imageUrls };
       });
@@ -112,7 +100,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchListings();
-  }, []);
+  }, []); // The empty dependency array means this runs once on mount.
 
   const handleImageClick = (imageUrl) => {
     setZoomImage(imageUrl);
