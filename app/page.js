@@ -33,6 +33,7 @@ export default function Home() {
   };
 
   // Function to fetch all room listings from Appwrite
+// Function to fetch all room listings from Appwrite
 const fetchListings = async () => {
   try {
     setLoading(true);
@@ -85,7 +86,17 @@ const fetchListings = async () => {
                 item.includes('/view?project=')
               ) {
                 console.log(`Using WhatsApp URL for ${listing.$id}: ${item}`);
-                return item;
+                // Test URL accessibility
+                try {
+                  const response = await fetch(item, { method: 'HEAD' });
+                  console.log(`WhatsApp URL status for ${item}: ${response.status}`);
+                  return item;
+                } catch (e) {
+                  console.error(`WhatsApp URL inaccessible for ${listing.$id}: ${item}`, {
+                    message: e.message,
+                  });
+                  return placeholderImageUrl;
+                }
               }
               // Otherwise, treat as a file ID (website)
               try {
@@ -125,7 +136,17 @@ const fetchListings = async () => {
                 item.includes('/view?project=')
               ) {
                 console.log(`Using WhatsApp string URL for ${listing.$id}: ${item}`);
-                return item;
+                // Test URL accessibility
+                try {
+                  const response = await fetch(item, { method: 'HEAD' });
+                  console.log(`WhatsApp string URL status for ${item}: ${response.status}`);
+                  return item;
+                } catch (e) {
+                  console.error(`WhatsApp string URL inaccessible for ${listing.$id}: ${item}`, {
+                    message: e.message,
+                  });
+                  return placeholderImageUrl;
+                }
               }
               // Otherwise, treat as a file ID (website)
               try {
