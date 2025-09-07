@@ -33,70 +33,147 @@ export default function Home() {
   };
 
   // Function to fetch all room listings from Appwrite
-  const fetchListings = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Initialize Appwrite services inside the function
-      const client = new Client()
-        .setEndpoint(appwriteConfig.endpoint)
-        .setProject(appwriteConfig.projectId);
+const fetchListings = async () => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      const databases = new Databases(client);
-      const storage = new Storage(client);
+    // Initialize Appwrite services inside the function
+    const client = new Client()
+      .setEndpoint(appwriteConfig.endpoint)
+      .setProject(appwriteConfig.projectId);
 
-      const response = await databases.listDocuments(
-        appwriteConfig.databaseId,
-        appwriteConfig.collectionId,
-        [Query.orderDesc('$createdAt')]
-      );
+    const databases = new Databases(client);
+    const storage = new Storage(client);
 
-      const listingsWithImages = response.documents.map(listing => {
+    console.log('Fetching listings with config:', {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: appwriteConfig.collectionId,
+      endpoint: appwriteConfig.endpoint,
+      projectId: appwriteConfig.projectId,
+      storageId: appwriteConfig.storageId,
+    });
+
+    const response = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.collectionId,
+      [Query.orderDesc('$createdAt')]
+    );
+
+    console.log('Listings fetched successfully:', {
+      total: response.total,
+      documentCount: response.documents.length,
+      documentIds: response.documents.map(doc => doc.$id),
+    });
+
+    const listingsWithImages = await Promise.all(
+      response.documents.map(async (listing) => {
         let imageUrls = [];
 
-        // Case 1: Images are stored as an array
+        console.log(`Raw images for ${listing.$id}:`, listing.images);
+
+        // Case 1: Images are stored as an array (e.g., parsed WhatsApp URLs or file IDs)
         if (Array.isArray(listing.images)) {
-          imageUrls = listing.images.map(item => {
-            // If the item is a URL (from bot), use it directly
-            if (isValidUrl(item)) {
-              return item;
-            }
-            // Otherwise, treat as a file ID (from website)
-            try {
-              const fileView = storage.getFileView(appwriteConfig.storageId, item);
-              const url = fileView?.href || `${appwriteConfig.endpoint}/storage/buckets/${appwriteConfig.storageId}/files/${item}/view?project=${appwriteConfig.projectId}`;
-              return url;
-            } catch (e) {
-              console.error(`Error with getFileView for fileId: ${item}:`, e);
-              return placeholderImageUrl;
-            }
-          });
+          imageUrls = await Promise.all(
+            listing.images.map(async (item) => {
+              // If the item is a URL (WhatsApp bot), use it directly
+              if (
+                isValidUrl(item) &&
+                item.includes('cloud.appwrite.io') &&
+                item.includes('/storage/buckets/') &&
+                item.includes('/files/') &&
+                item.includes('/view?project=')
+              ) {
+                console.log(`Using WhatsApp URL for ${listing.$id}: ${item}`);
+                return item;
+              }
+              // Otherwise, treat as a file ID (website)
+              try {
+                // Validate file ID existence
+                await storage.getFile(appwriteConfig.storageId, item);
+                console.log(`File ID ${item} exists for ${listing.$id}`);
+                const fileView = storage.getFileView(appwriteConfig.storageId, item);
+                const url = fileView?.href || `${appwriteConfig.endpoint}/v1/storage/buckets/${appwriteConfig.storageId}/files/${item}/view?project=${appwriteConfig.projectId}`;
+                console.log(`Generated URL for file ID ${item} in ${listing.$id}: ${url}`);
+                return url;
+              } catch (e) {
+                console.error(`Error processing file ID ${item} for ${listing.$id}:`, {
+                  message: e.message,
+                  code: e.code,
+                  type: e.type,
+                });
+                return placeholderImageUrl;
+              }
+            })
+          );
         }
-        // Case 2: Images are a comma-separated string (fallback for bot)
+        // Case 2: Images are a comma-separated string (WhatsApp URLs or website file IDs)
         else if (typeof listing.images === 'string' && listing.images.trim() !== '') {
-          imageUrls = listing.images
+          const items = listing.images
             .split(/,\s*|\s*,\s*/)
-            .map(url => url.trim())
-            .filter(url => isValidUrl(url));
+            .map(item => item.trim())
+            .filter(item => item !== '');
+
+          imageUrls = await Promise.all(
+            items.map(async (item) => {
+              // If the item is a URL (WhatsApp bot), use it directly
+              if (
+                isValidUrl(item) &&
+                item.includes('cloud.appwrite.io') &&
+                item.includes('/storage/buckets/') &&
+                item.includes('/files/') &&
+                item.includes('/view?project=')
+              ) {
+                console.log(`Using WhatsApp string URL for ${listing.$id}: ${item}`);
+                return item;
+              }
+              // Otherwise, treat as a file ID (website)
+              try {
+                // Validate file ID existence
+                await storage.getFile(appwriteConfig.storageId, item);
+                console.log(`File ID ${item} exists for ${listing.$id}`);
+                const fileView = storage.getFileView(appwriteConfig.storageId, item);
+                const url = fileView?.href || `${appwriteConfig.endpoint}/v1/storage/buckets/${appwriteConfig.storageId}/files/${item}/view?project=${appwriteConfig.projectId}`;
+                console.log(`Generated URL for file ID ${item} in ${listing.$id}: ${url}`);
+                return url;
+              } catch (e) {
+                console.error(`Error processing file ID ${item} for ${listing.$id}:`, {
+                  message: e.message,
+                  code: e.code,
+                  type: e.type,
+                });
+                return placeholderImageUrl;
+              }
+            })
+          );
         }
 
         // Fallback to placeholder if no valid images
         if (imageUrls.length === 0) {
+          console.warn(`No valid images for listing ${listing.$id}, using placeholder`);
           imageUrls.push(placeholderImageUrl);
         }
 
-        return { ...listing, imageUrls };
-      });
+        console.log(`Processed imageUrls for ${listing.$id}:`, imageUrls);
 
-      setListings(listingsWithImages);
-    } catch (e) {
-      console.error('Error fetching listings:', e.message, e.code);
-      setError('Failed to load listings. Please check your Appwrite configuration and permissions.');
-    } finally {
-      setLoading(false);
-    }
-  };
+        return { ...listing, imageUrls };
+      })
+    );
+
+    setListings(listingsWithImages);
+  } catch (e) {
+    console.error('Error fetching listings:', {
+      message: e.message,
+      code: e.code,
+      type: e.type,
+      response: e.response ? JSON.stringify(e.response) : 'No response data',
+      stack: e.stack,
+    });
+    setError('Failed to load listings. Please check your Appwrite configuration and permissions.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchListings();
