@@ -93,7 +93,7 @@ const fetchListings = async () => {
                 await storage.getFile(appwriteConfig.storageId, item);
                 console.log(`File ID ${item} exists for ${listing.$id}`);
                 const fileView = storage.getFileView(appwriteConfig.storageId, item);
-                const url = fileView?.href || `${appwriteConfig.endpoint}/v1/storage/buckets/${appwriteConfig.storageId}/files/${item}/view?project=${appwriteConfig.projectId}`;
+                const url = fileView?.href || `${appwriteConfig.endpoint}/storage/buckets/${appwriteConfig.storageId}/files/${item}/view?project=${appwriteConfig.projectId}`;
                 console.log(`Generated URL for file ID ${item} in ${listing.$id}: ${url}`);
                 return url;
               } catch (e) {
@@ -133,7 +133,7 @@ const fetchListings = async () => {
                 await storage.getFile(appwriteConfig.storageId, item);
                 console.log(`File ID ${item} exists for ${listing.$id}`);
                 const fileView = storage.getFileView(appwriteConfig.storageId, item);
-                const url = fileView?.href || `${appwriteConfig.endpoint}/v1/storage/buckets/${appwriteConfig.storageId}/files/${item}/view?project=${appwriteConfig.projectId}`;
+                const url = fileView?.href || `${appwriteConfig.endpoint}/storage/buckets/${appwriteConfig.storageId}/files/${item}/view?project=${appwriteConfig.projectId}`;
                 console.log(`Generated URL for file ID ${item} in ${listing.$id}: ${url}`);
                 return url;
               } catch (e) {
