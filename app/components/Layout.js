@@ -11,7 +11,7 @@ export default function Layout({ children }) {
           <Link href="/" className="text-3xl font-bold text-gray-800 mb-4 sm:mb-0 hover:text-indigo-600 transition-colors duration-200">
               <div className="flex items-center">
                 <Image 
-                  src="/eposti2.png" // Replace with the actual path to your icon
+                  src="/icon-watchos.png" // Replace with the actual path to your icon
                   alt="Roomify SA Home Icon"
                   width={32} // Adjust size as needed
                   height={32} // Adjust size as needed
