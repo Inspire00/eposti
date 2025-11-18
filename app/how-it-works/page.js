@@ -29,7 +29,7 @@ export default function HowItWorksPage() {
               
               {/* Notes for the Image */}
                   <p className="text-sm font-semibold italic text-black-500 mt-4 text-start text-left">
-                    -Start the chat by typing "Hi" to greet the room assistant and start a conversation.
+                    -Start the chat by typing Hi to greet the room assistant and start a conversation.
                   </p>
                   <p className="text-sm font-semibold italic text-black-500 mt-1">
                     -The Menu above will be diplayed. User has to choose number between 1-3. If the user is a landlord and has a vacant room/s user types 1. If user is a tenant and is looking for a room/s, user types 2. If user is looking for flats/house to rent, user types 3. The response is sent and you wait for the chatbot to reply. 
